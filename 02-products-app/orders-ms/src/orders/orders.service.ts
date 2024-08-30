@@ -59,7 +59,10 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
     return order;
   }
 
-  update(id: number, updateOrderDto: UpdateOrderDto) {
-    return `This action updates a #${id} order`;
+  async update(id: string, updateOrderDto: UpdateOrderDto) {
+    const { id: __, ...data } = updateOrderDto;
+    const order = await this.findOne(id);
+
+    return this.order.update({ where: { id }, data: data });
   }
 }

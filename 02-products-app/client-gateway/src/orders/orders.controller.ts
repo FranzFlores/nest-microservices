@@ -1,11 +1,10 @@
-import { Controller, Get, Post, Body, Param, Inject, ParseUUIDPipe, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Inject, ParseUUIDPipe, Query, Patch } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { catchError } from 'rxjs';
 
 import { CreateOrderDto } from './dto/create-order.dto';
 import { ORDER_SERVICE } from 'src/config';
-import { PaginationDto } from 'src/common/dto';
-import { OrderPaginationDto } from './dto';
+import { OrderPaginationDto, UpdateOrderDto } from './dto';
 
 @Controller('/orders')
 export class OrdersController {
@@ -36,6 +35,14 @@ export class OrdersController {
       .pipe(
         catchError(err => { throw new RpcException(err) })
       );
+  }
+
+  @Patch('/update/:id')
+  changeStatus(@Param('id', ParseUUIDPipe) id: string, @Body() updateOrderDto :UpdateOrderDto) {
+    return this.ordersClient.send('hangeOrderStatus', { id, updateOrderDto })
+    .pipe(
+      catchError(err => { throw new RpcException(err) })
+    );
   }
 
 }
