@@ -1,12 +1,12 @@
 import { HttpStatus, Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
+import { firstValueFrom } from 'rxjs';
 
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { OrderPaginationDto } from './dto';
 import { PRODUCT_SERVICE } from 'src/config';
-import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class OrdersService extends PrismaClient implements OnModuleInit {
@@ -42,7 +42,7 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
         data: {
           totalAmount: totalAmount,
           totalItems: totalItems,
-          OrderItem: {
+          orderItem: {
             createMany: {
               data: createOrderDto.items.map((orderItem) => ({
                 productId: orderItem.productId,
@@ -53,7 +53,7 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
           }
         },
         include: {
-          OrderItem: {
+          orderItem: {
             select: {
               price: true,
               quantity: true,
@@ -65,7 +65,7 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
 
       return {
         ...order,
-        OrderItem: order.OrderItem.map((orderItem) => ({
+        OrderItem: order.orderItem.map((orderItem) => ({
           ...orderItem,
           name: products.find(product => product.id === orderItem.productId).name
         }))
@@ -111,7 +111,7 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
     const order = await this.order.findFirst({
       where: { id },
       include: {
-        OrderItem: {
+        orderItem: {
           select: {
             price: true,
             quantity: true,
@@ -125,16 +125,16 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
       throw new RpcException({ status: HttpStatus.NOT_FOUND, message: 'Order not found' });
     }
 
-    const productIds = (order.OrderItem as any).map(orderItem => orderItem.productId);
+    const productIds = order.orderItem.map(orderItem => orderItem.productId);
     const products = await firstValueFrom(
       this.productsClient.send({ cmd: 'validate-products' }, productIds)
     );
 
     return {
       ...order,
-      OrderItem: order.OrderItem.map(orderItem => ({
+      OrderItem: order.orderItem.map(orderItem => ({
         ...orderItem,
-        name: products.find(x => x.id === orderItem.id).name
+        name: products.find(x => x.id === orderItem.productId).name
       }))
     };
   }

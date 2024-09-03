@@ -41,5 +41,5 @@ model OrderItem {
   price     Float
 
   Order   Order? @relation(fields: [orderId], references: [id])
-  orderId String
+  orderId String?
 }
