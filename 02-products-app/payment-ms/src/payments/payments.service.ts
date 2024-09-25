@@ -1,13 +1,20 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
+import { Request, Response } from 'express';
 import Stripe from 'stripe';
 
-import { envs } from 'src/config';
+import { envs, NATS_SERVICE } from 'src/config';
 import { PaymentSessionDto } from './dto/payment-session.dto';
-import { Request, Response } from 'express';
 
 @Injectable()
 export class PaymentsService {
     private readonly stripe = new Stripe(envs.stripeSecret);
+    private readonly logger = new Logger('PaymentService');
+
+    constructor(
+        @Inject(NATS_SERVICE)
+        private readonly client: ClientProxy
+    ) { }
 
     async createPaymentSession(paymentSessionDto: PaymentSessionDto) {
         const { currency, items, orderId } = paymentSessionDto;
@@ -62,6 +69,13 @@ export class PaymentsService {
         switch (event.type) {
             case 'charge.succeeded':
                 const chargeSucceded = event.data.object;
+                const payload = {
+                    stripePaymentId: chargeSucceded.id,
+                    orderId: chargeSucceded.metadata.orderId,
+                    receiptUrl: chargeSucceded.receipt_url,
+                }
+
+                this.client.emit('payment.succeeded', payload);
                 break;
             default:
                 console.log('Evento no controlado');
