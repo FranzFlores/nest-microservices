@@ -6,7 +6,8 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { OrderPaginationDto } from './dto';
-import { NATS_SERVICE} from 'src/config';
+import { NATS_SERVICE } from 'src/config';
+import { OrderWithProducts } from './interfaces/order-with-products.interface';
 
 @Injectable()
 export class OrdersService extends PrismaClient implements OnModuleInit {
@@ -144,5 +145,21 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
     const order = await this.findOne(id);
 
     return this.order.update({ where: { id }, data: data });
+  }
+
+  async createPaymentSession(order: OrderWithProducts) {
+    const paymentSession = await firstValueFrom(
+      this.client.send('create.payment.session', {
+        orderId: order.id,
+        currency: 'usd',
+        items: order.OrderItem.map(item => ({
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity
+        }))
+      })
+    );
+
+    return paymentSession;
   }
 }
