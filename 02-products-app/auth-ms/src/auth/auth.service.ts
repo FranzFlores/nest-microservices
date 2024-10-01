@@ -1,17 +1,30 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { RpcException } from '@nestjs/microservices';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
-import { RegisterUserDto } from './dto';
+import { LoginUserDto, RegisterUserDto } from './dto';
+import { Payload } from './interfaces/payload.interface';
+
 
 @Injectable()
 export class AuthService extends PrismaClient implements OnModuleInit {
     private readonly logger = new Logger('Auth Service');
 
+    constructor(
+        private readonly jwtService: JwtService
+    ){
+        super();
+    }
+
     onModuleInit() {
         this.$connect();
         this.logger.log('MongoDB Conectado');
+    }
+
+    async signJWT(payload: Payload) {
+        return this.jwtService.sign(payload);
     }
 
     async registerUser(registerUserDto: RegisterUserDto) {
@@ -49,5 +62,42 @@ export class AuthService extends PrismaClient implements OnModuleInit {
             });
         }
     }
+
+    async loginUser(loginUserDto: LoginUserDto) {
+        const { email, password } = loginUserDto;
+        try {
+            const user = await this.user.findUnique({
+                where: {
+                    email: email
+                }
+            });
+
+            if (!user) {
+                throw new RpcException({
+                    status: 400,
+                    message: 'El Usuario/Contraseña es inválido'
+                });
+            }
+
+            const isPasswordValid = bcrypt.compareSync(password, user.password);
+            if (!isPasswordValid) {
+                throw new RpcException({
+                    status: 400,
+                    message: 'El Usuario/Contraseña es inválido'
+                });
+            }
+
+            const { password: __, ...rest } = user;
+
+            return { user: rest, token: await this.signJWT(rest) }
+        } catch (error) {
+            console.log(error);
+            throw new RpcException({
+                status: 400,
+                message: error.message
+            });
+        }
+    }
+
 
 }
