@@ -47,4 +47,4 @@ CMD [ "node", "dist/main.js" ]
 
 # Ejecutar con
 # docker build -f Dockerfile.prod -t client-gateway
-
+# docker image push <image>
