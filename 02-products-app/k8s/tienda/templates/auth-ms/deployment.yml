@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: auth-ms
+  name: auth-ms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-ms
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: auth-ms
+    spec:
+      containers:
+      - image: auth-ms
+        name: auth-ms
+        env:
+          - name: PORT
+            value: "3000"
+          - name: NATS_SERVER
+            value: "nats://nats"
+          - name: DATABASE_URL
+            valueFrom:
+              secretKetRef:
+                name: auth-secrets
+                key: database_url
+          - name: JWT_SECRET
+            value: ""
+        resources: {}
+status: {}
